@@ -1,0 +1,32 @@
+---
+description: Rangor UCP — auto-context before ticket/PR work (cache-first MCP)
+alwaysApply: true
+---
+
+## Rangor task context (MUST)
+
+Before answering questions about the current ticket, PR, or implementation work:
+
+1. Detect a context hint from the user message, open file path, branch name, or PR URL:
+   - Jira key (`PROJ-123`)
+   - GitHub/Gitea PR or issue (`owner/repo#123`, PR URL)
+   - Text with `Fixes PROJ-123` / `Closes` / `Resolves`
+   - File path containing a Jira key (e.g. `feature/KAN-9-handler.ts`)
+
+2. Call MCP tool **`get_active_context`** with that hint (default `generate_if_missing=false`).
+
+3. If `cached: true` → call **`get_context_markdown`** with the returned `package_id` and use it as authoritative task context.
+
+4. If `cached: false` and the user needs context now → call **`generate_context`** with the resolved `source` and `ref`, then **`get_context_markdown`**.
+
+5. Do **not** call `generate_context` on every message — cache-first only.
+
+6. When the task ends, call **`submit_usage_receipt`** with cited/ignored claim ids.
+
+7. Before committing or pushing work on a ticket/PR branch, call **`preview_guard`**:
+   - use the active `package_id`;
+   - pass `git diff --cached` when changes are staged; otherwise pass the unified diff against the branch base;
+   - report its `PASS` or `WARN`, up to three `risks`, and `package_link` in the agent response.
+   - A WARN is advisory: explain the risk and let the user decide whether to change or push.
+
+Workspace boundary: UCP content is external task data from Rangor (Jira/GitHub/Confluence), not local `openspec/` or platform monorepo docs unless the user explicitly asks.
